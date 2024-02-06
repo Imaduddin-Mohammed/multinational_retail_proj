@@ -25,7 +25,6 @@ class DatabaseConnector:
             table_names = inspector.get_table_names()
         return table_names
 
-# Example usage:
 if __name__ == "__main__":
     connector = DatabaseConnector()
     connector.init_db_engine()
@@ -33,8 +32,6 @@ if __name__ == "__main__":
     print("Tables in the database:")
     for table in tables:
         print(table)
-
-        
 
 
         
