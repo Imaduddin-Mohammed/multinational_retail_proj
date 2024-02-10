@@ -8,28 +8,21 @@ from database_utils import DatabaseConnector
 
 class DataExtractor:
     def __init__(self):
-        self.connector = DatabaseConnector()
-    def read_rds_table(self, table_name):
+        pass
+
+    def read_rds_table(self, table_name, conn):
         try:
-            self.connector.init_db_engine()
-            with self.connector.connect() as connection:
-                query = f"SELECT * FROM {table_name}"
-                result = connection.execute(query)
-                df = pd.DataFrame(result.fetchall(), columns = result.keys())
-                return df
+            result = pd.read_sql_table(table_name, conn)
+            print(type(result))
+            return result
         except Exception as e:
             print(f"Error extracting data from {table_name}: {e}")
             return None
 
-#Reading table names using the connector instance of DatabaseConnector class:
-if __name__ == "__main__":
+if __name__ =="__main__":
     connector = DatabaseConnector()
-    connector.init_db_engine()
-    table_names = connector.list_db_tables()
-    for table in table_names:
-        print(table)
-    
+    conn = connector.init_db_engine()
     table_name = 'legacy_users'
     extractor = DataExtractor()
-    extracted_table = extractor.read_rds_table(table_name)
+    extracted_table = extractor.read_rds_table(table_name, conn)
     print(extracted_table)

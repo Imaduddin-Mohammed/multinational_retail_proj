@@ -18,12 +18,19 @@ class DatabaseConnector:
     def init_db_engine(self):
         db_url = f"postgresql://{self.db_creds['RDS_USER']}:{self.db_creds['RDS_PASSWORD']}@{self.db_creds['RDS_HOST']}:{self.db_creds['RDS_PORT']}/{self.db_creds['RDS_DATABASE']}"
         self.engine = sqlalchemy.create_engine(db_url)
+        self.engine.execution_options(isolation_level='AUTOCOMMIT').connect()
+        return self.engine.connect()
+        
 
     def list_db_tables(self):
         with self.engine.connect() as connection:
             inspector = sqlalchemy.inspect(connection)
             table_names = inspector.get_table_names()
         return table_names
+    
+    def upload_to_db(self,df, table_name):
+        pass
+
 
 if __name__ == "__main__":
     connector = DatabaseConnector()
