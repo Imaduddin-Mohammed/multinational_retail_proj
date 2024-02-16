@@ -8,6 +8,7 @@
 
 from database_utils import DatabaseConnector
 from data_extraction import DataExtractor
+from dateutil.parser import parse
 import pandas as pd
 
 class DataCleaning:
@@ -33,7 +34,6 @@ class DataCleaning:
         user_df.country = user_df.country[user_df['country'].isin(countries_to_keep)]
         return user_df
     
-
     def clean_store_data(self, store_data):
 
         pd.set_option('display.max_columns', None)
@@ -44,8 +44,7 @@ class DataCleaning:
         #row 447 in the entire store_df contains incorrect value
         store_df.drop([447], inplace = True)
         #converting the staff_numbers column to numeric
-        store_df.staff_numbers = pd.to_numeric(store_df.staff_numbers, errors='coerce')
-        print(store_df.staff_numbers)
+        store_df.staff_numbers = pd.to_numeric(store_df.staff_numbers, errors= 'ignore')
         #keeping only 2 continents
         continents_to_keep = ['Europe', 'America', 'eeEurope', 'eeAmerica']
         store_df.continent = store_df.continent[store_df.continent.isin(continents_to_keep)]
@@ -53,14 +52,10 @@ class DataCleaning:
         store_df['continent'] = store_df['continent'].replace({'eeEurope': 'Europe', 'eeAmerica': 'America'})
         store_type_to_keep = ['Local', 'Super Store', 'Mall Kiosk', 'Outlet', 'Web Portal']
         store_df.store_type = store_df.store_type[store_df.store_type.isin(store_type_to_keep)]
-        print(store_df.store_type.value_counts())
         store_df.opening_date = pd.to_datetime(store_df.opening_date, infer_datetime_format= True, errors= 'coerce')
-        print(store_df.opening_date)
         store_df.reset_index()
-        print(store_df.continent.value_counts())
+        print(store_df.head(5))
         return store_df
-
-
 
     def clean_orders_data(self, orders_data):
 
@@ -69,32 +64,52 @@ class DataCleaning:
         #dropping these 2 columns because they are irrelevant
         order_df.drop(columns = ['level_0', '1'], inplace = True)
         #checking productquantity for incorrect values
-        print(order_df.product_quantity.value_counts())
         null_cols_percent = print(order_df.isna().mean()*100)
         print(null_cols_percent)
         order_df.card_number.drop_duplicates(inplace = True)
         order_df.dropna(subset = ['first_name', 'last_name'], inplace = True)
         return order_df
+    
+    #Task4 step 3
+    #DataCleaning class to clean the data to remove any erroneous values, NULL values or errors with formatting.
+    def clean_card_data(self, card_data):
+        pd.set_option('display.max_rows', None)
+        card_details = card_data.copy()
+        card_details.date = pd.to_datetime(card_details.expiry_date, infer_datetime_format= True, errors= "coerce")
+        # the above conversion was not efficient hence we use parse from dateutil
+        card_details.expiry_date = card_details.expiry_date.apply(parse)
+        card_details.expiry_date = pd.to_datetime(card_details.expiry_date, infer_datetime_format= True, errors= "coerce")
+        card_providers_to_keep = ['VISA 16 digit','JCB 16 digit' , 'JCB 15 digit ', 'VISA 19 digit', 'Diners Club / Carte Blanche', 'American Express', 'Maestro', 'Discover', 'Mastercard' ]
+        card_details.card_provider = card_details.card_provider[card_details.card_provider.isin(card_providers_to_keep)]
+        print(f"unique card provider:\n{card_details.card_provider.value_counts()}")
+        card_details.card_provider.dropna(inplace = True)
+        card_details.date_payment_confirmed = pd.to_datetime(card_details.date_payment_confirmed)
+        null_cols_percent = card_details.isna().mean()*100
+        print(f"percentage of nulls in each columns:\n{null_cols_percent}")
+        return card_details.info()
 
 if __name__ =="__main__":
     connector = DatabaseConnector()
-    conn = connector.init_db_engine()
+    engine1, engine2 = connector.init_db_engine()
     extractor = DataExtractor()
     cleaner = DataCleaning()
 
-    # legacy_users_table = extractor.read_rds_table(table_name= 'legacy_users', conn = conn)
-    # cleaned_legacy_user = cleaner.clean_user_data(legacy_users_table)
-    # print(cleaned_legacy_user)
+    legacy_users_table = extractor.read_rds_table(table_name= 'legacy_users', conn = engine1)
+    cleaned_legacy_user = cleaner.clean_user_data(legacy_users_table)
+    print(cleaned_legacy_user)
 
-    legacy_store_table = extractor.read_rds_table(table_name= 'legacy_store_details', conn = conn)
+    legacy_store_table = extractor.read_rds_table(table_name= 'legacy_store_details', conn = engine1)
     cleaned_legacy_store = cleaner.clean_store_data(legacy_store_table)
     print(cleaned_legacy_store)
 
+    orders_table = extractor.read_rds_table(table_name= 'orders_table', conn = engine1)
+    cleaned_orders_table = cleaner.clean_orders_data(orders_table)
+    print(cleaned_orders_table)
 
-    # orders_table = extractor.read_rds_table(table_name= 'orders_table', conn = conn)
-    # cleaned_orders_table = cleaner.clean_orders_data(orders_table)
-    # print(cleaned_orders_table)
+    # uploading legacy_users table to sales_data database in a table called dim_users
+    users = connector.upload_to_db(cleaned_legacy_user, 'dim_users')
+    print(type(users))
 
-        
-        
-    
+
+
+
