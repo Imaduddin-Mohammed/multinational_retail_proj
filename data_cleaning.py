@@ -81,11 +81,10 @@ class DataCleaning:
         card_details.expiry_date = pd.to_datetime(card_details.expiry_date, infer_datetime_format= True, errors= "coerce")
         card_providers_to_keep = ['VISA 16 digit','JCB 16 digit' , 'JCB 15 digit ', 'VISA 19 digit', 'Diners Club / Carte Blanche', 'American Express', 'Maestro', 'Discover', 'Mastercard' ]
         card_details.card_provider = card_details.card_provider[card_details.card_provider.isin(card_providers_to_keep)]
-        print(f"unique card provider:\n{card_details.card_provider.value_counts()}")
+        print(f"unique card providers:\n{card_details.card_provider.value_counts()}")
         card_details.card_provider.dropna(inplace = True)
-        card_details.date_payment_confirmed = pd.to_datetime(card_details.date_payment_confirmed)
         null_cols_percent = card_details.isna().mean()*100
-        print(f"percentage of nulls in each columns:\n{null_cols_percent}")
+        print(f"percentage of nulls in each column:\n{null_cols_percent}")
         return card_details.info()
 
 if __name__ =="__main__":
