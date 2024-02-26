@@ -37,45 +37,41 @@ class DataExtractor:
         # Check if the request was successful
         if response.status_code == 200:
             # Extract the number of stores from the response
-            stores = response.text
+            stores = response.json()
             return f"The number of stores to extract :\n{stores}"
         else:
             # Handle unsuccessful request
             print("Failed to fetch number of stores. Status code:", response.status_code)
             return None
 
-    def retrieve_stores_data(self, retrieve_store_endpoint):
-            # Make a request to the store endpoint
-        response = requests.get(retrieve_store_endpoint)
-        # Check if the request was successful
-        if response.status_code == 200:
-            # Parse JSON response
-            store_data = response.json()
-            print(store_data)
-    # Convert the data to a DataFrame
-            df = pd.DataFrame(store_data)
-            return df.head()
-        else:
-            # Handle unsuccessful request
-            print("Failed to retrieve stores data. Status code:", response.status_code)
-            return response.text
+    def retrieve_stores_data(self):
+        for number in range(int(stores['number_stores'])):
+            url_base = f"https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{number}"
+            response = requests.get(url_base)
+            if response.status_code == 200:
+                store = response.json()
+                return type(store)
+            else:
+                # Handle unsuccessful request
+                print("Failed to retrieve stores data. Status code:", response.status_code)
+                return response.text
         
 
-    def extract_from_s3(self, address):
-        try:
-    # Boto3 code that may raise exceptions
-            s3 = boto3.client('s3')
-            file = s3.download_file('my-boto3-bucket-imad', 'pio.jpeg', "\\Users\\mohdi\\Desktop\\pio_from_s3_bucket.jpeg")
-            print(file)
-            # response = s3.download_file('data-handling-public', 'products.csv', '\\Users\\mohdi\\Desktop\\aicore\\products.csv')
-        except NoCredentialsError:
-            print("AWS credentials not found. Please configure your credentials.")
+    # def extract_from_s3(self, address):
+    #     try:
+    # # Boto3 code that may raise exceptions
+    #         s3 = boto3.client('s3')
+    #         file = s3.download_file('my-boto3-bucket-imad', 'pio.jpeg', "\\Users\\mohdi\\Desktop\\pio_from_s3_bucket.jpeg")
+    #         print(file)
+    #         # response = s3.download_file('data-handling-public', 'products.csv', '\\Users\\mohdi\\Desktop\\aicore\\products.csv')
+    #     except NoCredentialsError:
+    #         print("AWS credentials not found. Please configure your credentials.")
 
-        except ClientError as e:
-            if e.response['Error']['Code'] == 'NoSuchBucket':
-                print("The specified bucket does not exist.")
-            else:
-                print("An error occurred:", e)
+    #     except ClientError as e:
+    #         if e.response['Error']['Code'] == 'NoSuchBucket':
+    #             print("The specified bucket does not exist.")
+    #         else:
+    #             print("An error occurred:", e)
             
 if __name__ =="__main__":
     
@@ -93,15 +89,13 @@ if __name__ =="__main__":
     # extracted_card_df = extractor.retrieve_pdf_data(pdf_path)
     # print(extracted_card_df)
 
-    # credentials = connector.read_db_creds()
     no_of_stores_endpoint = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores"
     headers = {'x-api-key': "yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX"}
 
-    # store_numbers = extractor.list_number_of_stores(no_of_stores_endpoint, headers)
-    # print(store_numbers)
+    stores = extractor.list_number_of_stores(no_of_stores_endpoint, headers)
+    print(stores)
 
-    retrieve_store_endpoint = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store_number}"
-    store_df = extractor.retrieve_stores_data(retrieve_store_endpoint)
+    store_df = extractor.retrieve_stores_data()
     print(store_df)
 
     # address = "s3://data-handling-public/products.csv"
