@@ -73,19 +73,39 @@ class DataCleaning:
     #Task4 step 3
     #DataCleaning class to clean the data to remove any erroneous values, NULL values or errors with formatting.
     def clean_card_data(self, card_data):
-        pd.set_option('display.max_rows', None)
-        card_details = card_data.copy()
-        card_details.date = pd.to_datetime(card_details.expiry_date, infer_datetime_format= True, errors= "coerce")
-        # the above conversion was not efficient hence we use parse from dateutil
-        card_details.expiry_date = card_details.expiry_date.apply(parse)
-        card_details.expiry_date = pd.to_datetime(card_details.expiry_date, infer_datetime_format= True, errors= "coerce")
-        card_providers_to_keep = ['VISA 16 digit','JCB 16 digit' , 'JCB 15 digit ', 'VISA 19 digit', 'Diners Club / Carte Blanche', 'American Express', 'Maestro', 'Discover', 'Mastercard' ]
-        card_details.card_provider = card_details.card_provider[card_details.card_provider.isin(card_providers_to_keep)]
-        print(f"unique card providers:\n{card_details.card_provider.value_counts()}")
-        card_details.card_provider.dropna(inplace = True)
-        null_cols_percent = card_details.isna().mean()*100
-        print(f"percentage of nulls in each column:\n{null_cols_percent}")
-        return card_details.info()
+        # pd.set_option('display.max_rows', None)
+        extracted_card_df = card_data.copy()
+        print(extracted_card_df.date_payment_confirmed.head())
+        print(f"Value count is: \n{extracted_card_df.date_payment_confirmed.value_counts()}")
+        #we mask out these NULLS for the entire dataframe
+        Nulls = ['NULL']
+        mask = extracted_card_df.date_payment_confirmed.isin(Nulls)
+        subset_df = extracted_card_df[mask]
+        subset_df
+        #from above we can see that there are 11NULL values present in this column which looking upon closely are entirely NULL for each column in the entire dataframe
+        extracted_card_df.dropna(subset=['date_payment_confirmed'], inplace=True)
+        #This doesnt drop nulls because they are not recognised by pandas because they are string
+        print(extracted_card_df.date_payment_confirmed.iloc[377])
+        #we check if NULLS are dropped. But they arent
+        #we have to manually handle these NULL values in the dataframe because they might be string or in a format pandas cannot recognise.
+        extracted_card_df.replace('NULL', float("NaN"), inplace= True)
+        extracted_card_df.replace('', float("NaN"), inplace= True)
+        extracted_card_df.replace(' ', float("NaN"), inplace= True)
+        print(extracted_card_df.date_payment_confirmed.iloc[377])
+        #dropping rows with all NaN values
+        extracted_card_df.dropna(axis = 0, how='all', inplace= True)
+        extracted_card_df.card_provider.value_counts()
+        #Removing the gibberish values from the dataframe and saving it in a filtered dataframe namely df.
+        gibberish_values = ['OGJTXI6X1H', 'BU9U947ZGV', 'UA07L7EILH', 'XGZBYBYGUW', 'DLWF2HANZF', '1M38DYQTZV', 'JRPRLPIBZ2',  'DE488ORDXY', '5CJH7ABGDR', 'JCQMU8FN85', 'TS8A81WFXV', 'WJVMUO4QX6', 'NB71VBAHJE', '5MFWFBZRM9']
+        df = extracted_card_df[~extracted_card_df.card_provider.isin(gibberish_values)]
+        date_format = '%m/%y'
+        df.expiry_date = pd.to_datetime(df.expiry_date, format = date_format, errors= 'coerce')
+        df.expiry_date
+        #applying parse because there are inconsistent date strings in this column, due to which format fails.
+        df.date_payment_confirmed = df.date_payment_confirmed.apply(parse)
+        return df
+
+
 
 if __name__ =="__main__":
     connector = DatabaseConnector()
@@ -108,6 +128,24 @@ if __name__ =="__main__":
     # uploading legacy_users table to sales_data database in a table called dim_users
     users = connector.upload_to_db(cleaned_legacy_user, 'dim_users')
     print(type(users))
+    
+    # extracting card_details from pdf
+    pdf_path = 'https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf'
+    extracted_card_df = extractor.retrieve_pdf_data(pdf_path)
+    extracted_card_df
+    cleaned_card_data = cleaner.clean_card_data(card_data= extracted_card_df)
+    print(cleaned_card_data.info())
+
+    #uploading cleaned_card_data to sales_database in a table called dim_card_details
+    card = connector.upload_to_db(cleaned_card_data, 'dim_card_details')
+    print("successfully uploaded card details to the sales_data database")
+    print(type(card))
+
+    
+
+
+
+
 
 
 

@@ -6,6 +6,9 @@
 import pandas as pd
 from database_utils import DatabaseConnector
 import tabula
+import requests
+import boto3
+from botocore.exceptions import NoCredentialsError, ClientError
 
 class DataExtractor:
     def __init__(self):
@@ -27,8 +30,53 @@ class DataExtractor:
         # Reset the index of the concatenated DataFrame
         concatenated_card_data.reset_index(drop=True, inplace=True)
         return concatenated_card_data
+    
+    def list_number_of_stores(self, no_of_stores_endpoint, headers):
+        # Make a request to the API key URL
+        response = requests.get(no_of_stores_endpoint, headers=headers)    
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Extract the number of stores from the response
+            stores = response.text
+            return f"The number of stores to extract :\n{stores}"
+        else:
+            # Handle unsuccessful request
+            print("Failed to fetch number of stores. Status code:", response.status_code)
+            return None
 
+    def retrieve_stores_data(self, retrieve_store_endpoint):
+            # Make a request to the store endpoint
+        response = requests.get(retrieve_store_endpoint)
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Parse JSON response
+            store_data = response.json()
+            print(store_data)
+    # Convert the data to a DataFrame
+            df = pd.DataFrame(store_data)
+            return df.head()
+        else:
+            # Handle unsuccessful request
+            print("Failed to retrieve stores data. Status code:", response.status_code)
+            return response.text
+        
 
+    def extract_from_s3(self, address):
+        try:
+    # Boto3 code that may raise exceptions
+            s3 = boto3.client('s3')
+            file = s3.download_file('my-boto3-bucket-imad', 'pio.jpeg', "\\Users\\mohdi\\Desktop\\pio_from_s3_bucket.jpeg")
+            print(file)
+            # response = s3.download_file('data-handling-public', 'products.csv', '\\Users\\mohdi\\Desktop\\aicore\\products.csv')
+        except NoCredentialsError:
+            print("AWS credentials not found. Please configure your credentials.")
+
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'NoSuchBucket':
+                print("The specified bucket does not exist.")
+            else:
+                print("An error occurred:", e)
+            
 if __name__ =="__main__":
     
     connector = DatabaseConnector()
@@ -37,10 +85,31 @@ if __name__ =="__main__":
     #passing the table names obtained from database_utils class and printing the extractor class result
     table_name = 'legacy_users'
     extractor = DataExtractor()
-    extracted_table = extractor.read_rds_table(table_name, conn = engine1)
-    print(extracted_table)
 
-    pdf_path = 'https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf'
-    extracted_card_df = extractor.retrieve_pdf_data(pdf_path)
-    print(extracted_card_df)
+    # extracted_table = extractor.read_rds_table(table_name, conn = engine1)
+    # print(extracted_table)
+
+    # pdf_path = 'https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf'
+    # extracted_card_df = extractor.retrieve_pdf_data(pdf_path)
+    # print(extracted_card_df)
+
+    # credentials = connector.read_db_creds()
+    no_of_stores_endpoint = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores"
+    headers = {'x-api-key': "yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX"}
+
+    # store_numbers = extractor.list_number_of_stores(no_of_stores_endpoint, headers)
+    # print(store_numbers)
+
+    retrieve_store_endpoint = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store_number}"
+    store_df = extractor.retrieve_stores_data(retrieve_store_endpoint)
+    print(store_df)
+
+    # address = "s3://data-handling-public/products.csv"
+    # extracted_product_data = extractor.extract_from_s3()
+    # print(extracted_product_data)
+
+    
+
+
+
     
