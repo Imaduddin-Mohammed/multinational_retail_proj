@@ -38,23 +38,29 @@ class DataExtractor:
         if response.status_code == 200:
             # Extract the number of stores from the response
             stores = response.json()
-            return f"The number of stores to extract :\n{stores}"
+            return stores['number_stores']
         else:
             # Handle unsuccessful request
             print("Failed to fetch number of stores. Status code:", response.status_code)
             return None
 
-    def retrieve_stores_data(self):
-        for number in range(int(stores['number_stores'])):
-            url_base = f"https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{number}"
-            response = requests.get(url_base)
+    def retrieve_stores_data(self, no_of_stores_endpoint, headers):
+        store_list = []
+        for _ in range(self.list_number_of_stores(no_of_stores_endpoint, headers)):
+            url_base = f"https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{_}"
+            response = requests.get(url_base, headers = headers)
             if response.status_code == 200:
-                store = response.json()
-                return type(store)
-            else:
-                # Handle unsuccessful request
-                print("Failed to retrieve stores data. Status code:", response.status_code)
-                return response.text
+                stores = response.json()
+                for row in stores.values():
+                    store_list.append(row)
+                # print(store_list)
+        columns = ['index','address', 'longitude', 'lat', 'locality', 'store_code', 'staff_numbers', 'opening_date', 'store_type', 'latitude', 'country_code', 'continent']
+        store_df = pd.DataFrame(store_list, columns=columns)
+        return store_df.head()
+            
+            # else:
+            #     print("Failed to retrieve stores data. Status code:", response.status_code)
+            #     return response.text
         
 
     # def extract_from_s3(self, address):
@@ -95,7 +101,7 @@ if __name__ =="__main__":
     stores = extractor.list_number_of_stores(no_of_stores_endpoint, headers)
     print(stores)
 
-    store_df = extractor.retrieve_stores_data()
+    store_df = extractor.retrieve_stores_data(no_of_stores_endpoint, headers)
     print(store_df)
 
     # address = "s3://data-handling-public/products.csv"
