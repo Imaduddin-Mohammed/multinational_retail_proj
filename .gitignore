@@ -1,5 +1,6 @@
 # .gitignore
-db_creds.yaml
+*.yaml
+*.env
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

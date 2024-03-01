@@ -70,7 +70,7 @@ class DataCleaning:
         order_df.dropna(subset = ['first_name', 'last_name'], inplace = True)
         return order_df
     
-    #Task4 step 3
+    #Task 4 step 3
     #DataCleaning class to clean the data to remove any erroneous values, NULL values or errors with formatting.
     def clean_card_data(self, card_data):
         # pd.set_option('display.max_rows', None)
@@ -104,8 +104,30 @@ class DataCleaning:
         #applying parse because there are inconsistent date strings in this column, due to which format fails.
         df.date_payment_confirmed = df.date_payment_confirmed.apply(parse)
         return df
+    
 
+    #Task 2 Step 4
+    def clean_store_data(self, store_df):
+        store_data = store_df.copy()
+        store_df.head(12)
+        store_data.isna().mean()*100
+        store_data.continent.value_counts()
+        store_data.replace('NULL', float("NaN"), inplace= True)
+        store_data.isna().mean()*100
+        store_data.value_counts()
+        #removing gibberish values from the dataframe
+        gibberish_values = ['QMAVR5H3LD', 'LU3E036ZD9', '5586JCLARW', 'GFJQ2AAEQ8', 'SLQBD982C0', 'XQ953VS0FG', '1WZB1TE1HL']
+        cleaned_store_data = store_data[~store_data.continent.isin(gibberish_values)]
+        cleaned_store_data.drop('lat', axis = 1 , inplace= True)
+        cleaned_store_data.continent.replace('eeEurope', 'Europe', inplace= True)
+        cleaned_store_data.continent.replace('eeAmerica', 'America', inplace= True)
+        cleaned_store_data.dropna(how = 'all', axis= 0, inplace= True)
+        cleaned_store_data.opening_date = cleaned_store_data.opening_date.astype('datetime64[ns]')
+        cleaned_store_data.continent = cleaned_store_data.continent.astype('category')
+        cleaned_store_data.country_code = cleaned_store_data.country_code.astype('category')
+        return cleaned_store_data #3 rows contain entire NULL values, 217,405 & 437.
 
+        
 
 if __name__ =="__main__":
     connector = DatabaseConnector()
@@ -113,33 +135,46 @@ if __name__ =="__main__":
     extractor = DataExtractor()
     cleaner = DataCleaning()
 
-    legacy_users_table = extractor.read_rds_table(table_name= 'legacy_users', conn = engine1)
-    cleaned_legacy_user = cleaner.clean_user_data(legacy_users_table)
-    print(cleaned_legacy_user)
+    # legacy_users_table = extractor.read_rds_table(table_name= 'legacy_users', conn = engine1)
+    # cleaned_legacy_user = cleaner.clean_user_data(legacy_users_table)
+    # print(cleaned_legacy_user)
 
-    legacy_store_table = extractor.read_rds_table(table_name= 'legacy_store_details', conn = engine1)
-    cleaned_legacy_store = cleaner.clean_store_data(legacy_store_table)
-    print(cleaned_legacy_store)
+    # legacy_store_table = extractor.read_rds_table(table_name= 'legacy_store_details', conn = engine1)
+    # cleaned_legacy_store = cleaner.clean_store_data(legacy_store_table)
+    # print(cleaned_legacy_store)
 
-    orders_table = extractor.read_rds_table(table_name= 'orders_table', conn = engine1)
-    cleaned_orders_table = cleaner.clean_orders_data(orders_table)
-    print(cleaned_orders_table)
+    # orders_table = extractor.read_rds_table(table_name= 'orders_table', conn = engine1)
+    # cleaned_orders_table = cleaner.clean_orders_data(orders_table)
+    # print(cleaned_orders_table)
 
-    # uploading legacy_users table to sales_data database in a table called dim_users
-    users = connector.upload_to_db(cleaned_legacy_user, 'dim_users')
-    print(type(users))
+    ## uploading legacy_users table to sales_data database in a table called dim_users
+    # users = connector.upload_to_db(cleaned_legacy_user, 'dim_users')
+    # print(type(users))
     
-    # extracting card_details from pdf
-    pdf_path = 'https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf'
-    extracted_card_df = extractor.retrieve_pdf_data(pdf_path)
-    extracted_card_df
-    cleaned_card_data = cleaner.clean_card_data(card_data= extracted_card_df)
-    print(cleaned_card_data.info())
+    ## extracting card_details from pdf
+    # pdf_path = 'https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf'
+    # extracted_card_df = extractor.retrieve_pdf_data(pdf_path)
+    # extracted_card_df
+    # cleaned_card_data = cleaner.clean_card_data(card_data= extracted_card_df)
+    # print(cleaned_card_data.info())
 
-    #uploading cleaned_card_data to sales_database in a table called dim_card_details
-    card = connector.upload_to_db(cleaned_card_data, 'dim_card_details')
-    print("successfully uploaded card details to the sales_data database")
-    print(type(card))
+    ##uploading cleaned_card_data to sales_database in a table called dim_card_details
+    # card = connector.upload_to_db(cleaned_card_data, 'dim_card_details')
+    # print("successfully uploaded card details to the sales_data database")
+    # print(type(card))
+
+    ##extracting store details from the endpoint url:
+    # return_the_number_of_stores = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores"
+    # retrieve_a_store = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store_number}"
+    # headers = {'x-api-key': "yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX"}
+    # number_of_stores = extractor.list_number_of_stores(return_the_number_of_stores)
+    # store_df = extractor.retrieve_stores_data(number_of_stores, retrieve_a_store)
+    # cleaned_store_data = cleaner.clean_store_data(store_df)
+    # print(cleaned_store_data.info())
+
+    ## uploading cleaned_store_data to sales_databse in a table called dim_store_details
+    # store = connector.upload_to_db(cleaned_store_data, 'dim_store_details')
+    # print("Successfully uploaded cleaned store data to the sales_database")
 
     
 

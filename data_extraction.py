@@ -10,10 +10,11 @@ import requests
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 
-class DataExtractor:
-    def __init__(self):
-        pass
 
+
+class DataExtractor:
+
+    
     def read_rds_table(self, table_name, conn):
         try:
             result = pd.read_sql_table(table_name, conn)
@@ -22,62 +23,60 @@ class DataExtractor:
         except Exception as e:
             print(f"Error extracting data from {table_name}: {e}")
             return None
-    def retrieve_pdf_data(self, pdf_path):
+    def retrieve_pdf_data(self, credentials):
         # multiple_tables=True is used to ensure that each page of the PDF is treated as a separate table. Then, pd.concat() is used to concatenate all the tables into a single DataFrame. Finally, reset_index() is used to reset the index of the concatenated DataFrame to ensure it's consistent.
-        pdf_data = tabula.read_pdf(pdf_path, pages='all', multiple_tables=True)
+        pdf_data = tabula.read_pdf(credentials['pdf_path'], pages='all', multiple_tables=True)
         # Concatenate all tables into a single DataFrame
         concatenated_card_data = pd.concat(pdf_data)
         # Reset the index of the concatenated DataFrame
         concatenated_card_data.reset_index(drop=True, inplace=True)
         return concatenated_card_data
     
-    def list_number_of_stores(self, no_of_stores_endpoint, headers):
-        # Make a request to the API key URL
-        response = requests.get(no_of_stores_endpoint, headers=headers)    
-        # Check if the request was successful
-        if response.status_code == 200:
-            # Extract the number of stores from the response
-            stores = response.json()
-            return stores['number_stores']
-        else:
-            # Handle unsuccessful request
-            print("Failed to fetch number of stores. Status code:", response.status_code)
-            return None
-
-    def retrieve_stores_data(self, no_of_stores_endpoint, headers):
-        store_list = []
-        for _ in range(self.list_number_of_stores(no_of_stores_endpoint, headers)):
-            url_base = f"https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{_}"
-            response = requests.get(url_base, headers = headers)
+    def list_number_of_stores(self, credentials):
+        try:
+            response = requests.get(credentials['return_the_number_of_stores'], headers = credentials['header_details'])    
             if response.status_code == 200:
                 stores = response.json()
-                for row in stores.values():
-                    store_list.append(row)
-                # print(store_list)
-        columns = ['index','address', 'longitude', 'lat', 'locality', 'store_code', 'staff_numbers', 'opening_date', 'store_type', 'latitude', 'country_code', 'continent']
-        store_df = pd.DataFrame(store_list, columns=columns)
-        return store_df.head()
+                return stores['number_stores']
+            else:
+                print("Failed to fetch number of stores. Status code:", response.status_code)
+                return None
+        except requests.RequestException as e:
+            print(f"An error occured: {e}")
+            return None
             
-            # else:
-            #     print("Failed to retrieve stores data. Status code:", response.status_code)
-            #     return response.text
+    def retrieve_stores_data(self, number_of_stores, credentials):
+        try:
+            store_list = []
+            for store_number in range(0, number_of_stores):
+                endpoint_url = credentials['retrieve_a_store'].replace("{store_number}", str(store_number))
+                response = requests.get(endpoint_url, headers = credentials['header_details'])
+
+                if response.status_code ==200:
+                    store_data = response.json()
+                    store_list.append(store_data)
+
+                else:
+                    f'Error retrieving store_details:{response.text}'
+                    return f'error code:{response.status_code}'
+
+            store_df = pd.DataFrame(store_list)
+            print("Retrieving stores dataframe:")
+            return store_df
         
+        except requests.RequestException as e:
+            print(f"An error occured: {e}")
+            return None
 
-    # def extract_from_s3(self, address):
-    #     try:
-    # # Boto3 code that may raise exceptions
-    #         s3 = boto3.client('s3')
-    #         file = s3.download_file('my-boto3-bucket-imad', 'pio.jpeg', "\\Users\\mohdi\\Desktop\\pio_from_s3_bucket.jpeg")
-    #         print(file)
-    #         # response = s3.download_file('data-handling-public', 'products.csv', '\\Users\\mohdi\\Desktop\\aicore\\products.csv')
-    #     except NoCredentialsError:
-    #         print("AWS credentials not found. Please configure your credentials.")
 
-    #     except ClientError as e:
-    #         if e.response['Error']['Code'] == 'NoSuchBucket':
-    #             print("The specified bucket does not exist.")
-    #         else:
-    #             print("An error occurred:", e)
+    def extract_from_s3(self, credentials):
+        s3 = boto3.client('s3')
+
+        file = s3.download_file()
+        print(file)
+
+
+
             
 if __name__ =="__main__":
     
@@ -95,14 +94,15 @@ if __name__ =="__main__":
     # extracted_card_df = extractor.retrieve_pdf_data(pdf_path)
     # print(extracted_card_df)
 
-    no_of_stores_endpoint = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores"
-    headers = {'x-api-key': "yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX"}
+    # return_the_number_of_stores = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores"
+    # retrieve_a_store = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store_number}"
+    # headers = {'x-api-key': "yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX"}
 
-    stores = extractor.list_number_of_stores(no_of_stores_endpoint, headers)
-    print(stores)
+    # number_of_stores = extractor.list_number_of_stores(return_the_number_of_stores)
+    # print(f"There are {number_of_stores} stores.")
 
-    store_df = extractor.retrieve_stores_data(no_of_stores_endpoint, headers)
-    print(store_df)
+    # stores_df = extractor.retrieve_stores_data(number_of_stores, retrieve_a_store)
+    # print(stores_df.info())
 
     # address = "s3://data-handling-public/products.csv"
     # extracted_product_data = extractor.extract_from_s3()
