@@ -10,11 +10,15 @@ from database_utils import DatabaseConnector
 from data_extraction import DataExtractor
 from dateutil.parser import parse
 import pandas as pd
+import re
+import numpy as np
+from decouple import config
 
 class DataCleaning:
     def __init__(self):
         pass
 
+    
     def clean_user_data(self, legacy_user):
 
         pd.set_option('display.max_columns', None)
@@ -70,7 +74,7 @@ class DataCleaning:
         order_df.dropna(subset = ['first_name', 'last_name'], inplace = True)
         return order_df
     
-    #Task 4 step 3
+    
     #DataCleaning class to clean the data to remove any erroneous values, NULL values or errors with formatting.
     def clean_card_data(self, card_data):
         # pd.set_option('display.max_rows', None)
@@ -106,7 +110,7 @@ class DataCleaning:
         return df
     
 
-    #Task 2 Step 4
+    
     def clean_store_data(self, store_df):
         store_data = store_df.copy()
         store_df.head(12)
@@ -126,14 +130,50 @@ class DataCleaning:
         cleaned_store_data.continent = cleaned_store_data.continent.astype('category')
         cleaned_store_data.country_code = cleaned_store_data.country_code.astype('category')
         return cleaned_store_data #3 rows contain entire NULL values, 217,405 & 437.
+    
+    def convert_product_weights(self, extracted_products_df):
+        def convert_weight(value):
+            try:
+                if 'x' in value:   
+                    numeric_part1, units1, numeric_part2, units2 = re.match(r"([\d.]+)\s*([a-zA-Z]*)\s*x\s*([\d.])\s*([a-zA-Z]*)", value).groups()
+                    if not units1:
+                        units1 = units2
+                        result = float(numeric_part1) * float(numeric_part2)
+                        if units1.lower() in ['g', 'gram', 'grams']:
+                            result /= 1000
+                        elif units1.lower() in ['ml', 'milliliter', 'milliliters']:
+                            result /= 1000
+                        elif units1.lower() in ['kg', 'kilogram', 'kilograms']:
+                            pass  # No conversion needed for kg
+                        elif units1.lower() in ['oz', 'ounce', 'ounces']:
+                            result *= 0.0283495
+                        else:
+                            # If units are not recognized, return NaN
+                            return np.nan
+                else:
+                    numeric_part, units = re.match(r"([\d.]+)\s*([a-zA-Z]*)", value).groups()
+                    result = float(numeric_part)
+                    if units.lower() in ['g', 'gram', 'grams']:
+                        result /= 1000
+                    elif units.lower() in ['ml', 'milliliter', 'milliliters']:
+                        result /= 1000
+                    elif units.lower() in ['kg', 'kilogram', 'kilograms']:
+                        pass  # No conversion needed for kg
+                    elif units.lower() in ['oz', 'ounce', 'ounces']:
+                        result *= 0.0283495
+                    else:
+                        # If units are not recognised, return NaN
+                        return np.nan
+                    return round(result, 3)
+            except Exception as e:
+                # If any error occurs, return NaN
+                return np.nan
+        extracted_products_df['weight'] = extracted_products_df['weight'].apply(convert_weight)
+        cleaned_products_data = extracted_products_df.rename(columns={'weight': 'weight_in_kg'})
+        return cleaned_products_data
 
-        
 
 if __name__ =="__main__":
-    connector = DatabaseConnector()
-    engine1, engine2 = connector.init_db_engine()
-    extractor = DataExtractor()
-    cleaner = DataCleaning()
 
     # legacy_users_table = extractor.read_rds_table(table_name= 'legacy_users', conn = engine1)
     # cleaned_legacy_user = cleaner.clean_user_data(legacy_users_table)
@@ -152,7 +192,6 @@ if __name__ =="__main__":
     # print(type(users))
     
     ## extracting card_details from pdf
-    # pdf_path = 'https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf'
     # extracted_card_df = extractor.retrieve_pdf_data(pdf_path)
     # extracted_card_df
     # cleaned_card_data = cleaner.clean_card_data(card_data= extracted_card_df)
@@ -164,9 +203,6 @@ if __name__ =="__main__":
     # print(type(card))
 
     ##extracting store details from the endpoint url:
-    # return_the_number_of_stores = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores"
-    # retrieve_a_store = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store_number}"
-    # headers = {'x-api-key': "yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX"}
     # number_of_stores = extractor.list_number_of_stores(return_the_number_of_stores)
     # store_df = extractor.retrieve_stores_data(number_of_stores, retrieve_a_store)
     # cleaned_store_data = cleaner.clean_store_data(store_df)
@@ -175,6 +211,20 @@ if __name__ =="__main__":
     ## uploading cleaned_store_data to sales_databse in a table called dim_store_details
     # store = connector.upload_to_db(cleaned_store_data, 'dim_store_details')
     # print("Successfully uploaded cleaned store data to the sales_database")
+
+
+    connector = DatabaseConnector()
+    cred_path ='db_creds.yaml'
+    credentials = connector.read_db_creds(file_path = cred_path)
+    engine1, engine2 = connector.init_db_engine(credentials)
+    extractor = DataExtractor()
+    s3_address = config('S3_ADDRESS')
+    csv_filepath = config('CSV_FILEPATH')
+    #make sure to configure aws credentials before running this method
+    extracted_product_df, csv_file = extractor.extract_from_s3(s3_address, csv_filepath)
+    cleaner = DataCleaning()
+    converted_weights = cleaner.convert_product_weights(extracted_product_df)
+    print(converted_weights.weight_in_kg)
 
     
 

@@ -9,6 +9,7 @@ import tabula
 import requests
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
+from decouple import config
 
 
 
@@ -23,18 +24,19 @@ class DataExtractor:
         except Exception as e:
             print(f"Error extracting data from {table_name}: {e}")
             return None
-    def retrieve_pdf_data(self, credentials):
+        
+    def retrieve_pdf_data(self, pdf_path):
         # multiple_tables=True is used to ensure that each page of the PDF is treated as a separate table. Then, pd.concat() is used to concatenate all the tables into a single DataFrame. Finally, reset_index() is used to reset the index of the concatenated DataFrame to ensure it's consistent.
-        pdf_data = tabula.read_pdf(credentials['pdf_path'], pages='all', multiple_tables=True)
+        pdf_data = tabula.read_pdf(pdf_path, pages='all', multiple_tables=True)
         # Concatenate all tables into a single DataFrame
         concatenated_card_data = pd.concat(pdf_data)
         # Reset the index of the concatenated DataFrame
         concatenated_card_data.reset_index(drop=True, inplace=True)
         return concatenated_card_data
     
-    def list_number_of_stores(self, credentials):
+    def list_number_of_stores(self, return_the_number_of_stores, headers):
         try:
-            response = requests.get(credentials['return_the_number_of_stores'], headers = credentials['header_details'])    
+            response = requests.get(return_the_number_of_stores, headers = headers)    
             if response.status_code == 200:
                 stores = response.json()
                 return stores['number_stores']
@@ -45,12 +47,13 @@ class DataExtractor:
             print(f"An error occured: {e}")
             return None
             
-    def retrieve_stores_data(self, number_of_stores, credentials):
+    def retrieve_stores_data(self, number_of_stores, retrieve_a_store, headers):
         try:
             store_list = []
             for store_number in range(0, number_of_stores):
-                endpoint_url = credentials['retrieve_a_store'].replace("{store_number}", str(store_number))
-                response = requests.get(endpoint_url, headers = credentials['header_details'])
+                #we can also use .format method to replace the store number
+                endpoint_url = retrieve_a_store.replace("{store_number}", str(store_number))
+                response = requests.get(endpoint_url, headers = headers)
 
                 if response.status_code ==200:
                     store_data = response.json()
@@ -69,46 +72,26 @@ class DataExtractor:
             return None
 
 
-    def extract_from_s3(self, credentials):
-        s3 = boto3.client('s3')
+    def extract_from_s3(self, s3_address, csv_filepath ):
+        #make sure to configure aws credentials before running this method
+        try:
+            s3 = boto3.client('s3')
+            #we were not given the bucket name and object key hence we scrape it from the address by splitting it
+            bucket_name, object_key = s3_address.replace('s3://', '').split('/', 1)
+            s3.download_file(bucket_name, object_key, csv_filepath)
+            products_df = pd.read_csv(csv_filepath, index_col=0)  # Read the .csv file into a Pandas DataFrame
+            print(f"Extracted successfully to this path: {csv_filepath} ")
+            return products_df, products_df.to_csv(index = False)
+        except NoCredentialsError:
+            print("AWS credentials not found. Please configure your credentials.")
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'NoSuchBucket':
+                print("The specified bucket does not exist.")
+            else:
+                print("An error occurred:", e)
 
-        file = s3.download_file()
-        print(file)
 
 
-
-            
-if __name__ =="__main__":
-    
-    connector = DatabaseConnector()
-    engine1, engine2 = connector.init_db_engine()
-
-    #passing the table names obtained from database_utils class and printing the extractor class result
-    table_name = 'legacy_users'
-    extractor = DataExtractor()
-
-    # extracted_table = extractor.read_rds_table(table_name, conn = engine1)
-    # print(extracted_table)
-
-    # pdf_path = 'https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf'
-    # extracted_card_df = extractor.retrieve_pdf_data(pdf_path)
-    # print(extracted_card_df)
-
-    # return_the_number_of_stores = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores"
-    # retrieve_a_store = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store_number}"
-    # headers = {'x-api-key': "yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX"}
-
-    # number_of_stores = extractor.list_number_of_stores(return_the_number_of_stores)
-    # print(f"There are {number_of_stores} stores.")
-
-    # stores_df = extractor.retrieve_stores_data(number_of_stores, retrieve_a_store)
-    # print(stores_df.info())
-
-    # address = "s3://data-handling-public/products.csv"
-    # extracted_product_data = extractor.extract_from_s3()
-    # print(extracted_product_data)
-
-    
 
 
 

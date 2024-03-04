@@ -29,16 +29,3 @@ class DatabaseConnector:
     def upload_to_db(self,dataframe,table_name, engine2):
         dim_users = dataframe.to_sql(table_name,engine2, if_exists = 'replace')
         return dim_users
-
-
-if __name__ == "__main__":
-
-    connector = DatabaseConnector()
-    connector.init_db_engine()
-    tables = connector.list_db_tables()
-    print("Tables in the database:")
-    for table in tables:
-        print(table)
-
-
-        
