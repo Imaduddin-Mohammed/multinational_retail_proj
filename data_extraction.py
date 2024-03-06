@@ -1,14 +1,13 @@
-import pandas as pd
-import tabula
-import requests
-import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
+import boto3
+import pandas as pd
+import requests
+import tabula
 
 
 
 class DataExtractor:
 
-    
     def read_rds_table(self, table_name, conn):
         try:
             result = pd.read_sql_table(table_name, conn)
@@ -87,8 +86,19 @@ class DataExtractor:
                 print("An error occurred:", e)
 
 
+    def retrieve_json_data(self,json_file_path):
+        try:
+            date_events = pd.read_json(json_file_path)
+            date_events.to_csv('date_events.csv', index= False)
+            return date_events
+        
+        except:
+            print("failed to read the json_file")
+            return None
 
 
+
+            
 
 
     

@@ -1,13 +1,14 @@
 from dateutil.parser import parse
+import numpy as np
 import pandas as pd
 import re
-import numpy as np
 
 
 
 class DataCleaning:
 
     def clean_legacy_user_data(self, legacy_users):
+
         user_df = legacy_users.copy()
         user_df.dropna(inplace = True)
         user_df.drop_duplicates( inplace = True)
@@ -23,37 +24,40 @@ class DataCleaning:
     
 
     def clean_legacy_store_data(self, store_df):
-        store_data = store_df.copy()
-        store_data.drop(columns = ['lat'], inplace = True)
-        col_with_null_percent = store_data.isna().mean()*100
+
+        cleaned_store_df = store_df.copy()
+        cleaned_store_df.drop(columns = ['lat'], inplace = True)
+        col_with_null_percent = cleaned_store_df.isna().mean()*100
         print(col_with_null_percent)
         #row 447 in the entire store_df contains incorrect value
-        store_data.drop([447], inplace = True)
+        cleaned_store_df.drop([447], inplace = True)
         #converting the staff_numbers column to numeric
-        store_data.staff_numbers = pd.to_numeric(store_data.staff_numbers, errors= 'ignore')
+        cleaned_store_df.staff_numbers = pd.to_numeric(cleaned_store_df.staff_numbers, errors= 'ignore')
         #keeping only 2 continents
         continents_to_keep = ['Europe', 'America', 'eeEurope', 'eeAmerica']
-        store_data.continent = store_data.continent[store_data.continent.isin(continents_to_keep)]
+        cleaned_store_df.continent = cleaned_store_df.continent[cleaned_store_df.continent.isin(continents_to_keep)]
         #using .replace to map correctly
-        store_data['continent'] = store_df['continent'].replace({'eeEurope': 'Europe', 'eeAmerica': 'America'})
+        cleaned_store_df['continent'] = store_df['continent'].replace({'eeEurope': 'Europe', 'eeAmerica': 'America'})
         store_type_to_keep = ['Local', 'Super Store', 'Mall Kiosk', 'Outlet', 'Web Portal']
-        store_data.store_type = store_df.store_type[store_df.store_type.isin(store_type_to_keep)]
-        store_data.opening_date = pd.to_datetime(store_df.opening_date, infer_datetime_format= True, errors= 'coerce')
-        store_data.reset_index()
+        cleaned_store_df.store_type = store_df.store_type[store_df.store_type.isin(store_type_to_keep)]
+        cleaned_store_df.opening_date = pd.to_datetime(store_df.opening_date, infer_datetime_format= True, errors= 'coerce')
+        cleaned_store_df.reset_index()
         print(store_df.head(5))
-        return store_data
+        return cleaned_store_df
 
 
     def clean_orders_data(self, orders_table):
-        order_data = orders_table.copy()
+
+        cleaned_order_df = orders_table.copy()
         #dropping these 4 columns because they are containing a large number of incorrect values
-        order_data.drop(columns = ['level_0', 'first_name', 'last_name', '1'], inplace = True)
-        null_cols_percent = order_data.isna().mean()*100
+        cleaned_order_df.drop(columns = ['level_0', 'first_name', 'last_name', '1'], inplace = True)
+        null_cols_percent = cleaned_order_df.isna().mean()*100
         print(null_cols_percent)
-        return order_data
+        return cleaned_order_df
     
 
     def clean_card_data(self, card_data):
+        
         extracted_card_df = card_data.copy()
         print(extracted_card_df.date_payment_confirmed.head())
         print(f"Value count is: \n{extracted_card_df.date_payment_confirmed.value_counts()}")
@@ -77,13 +81,13 @@ class DataCleaning:
         extracted_card_df.card_provider.value_counts()
         #Removing the gibberish values from the dataframe and saving it in a filtered dataframe namely df.
         gibberish_values = ['OGJTXI6X1H', 'BU9U947ZGV', 'UA07L7EILH', 'XGZBYBYGUW', 'DLWF2HANZF', '1M38DYQTZV', 'JRPRLPIBZ2',  'DE488ORDXY', '5CJH7ABGDR', 'JCQMU8FN85', 'TS8A81WFXV', 'WJVMUO4QX6', 'NB71VBAHJE', '5MFWFBZRM9']
-        df = extracted_card_df[~extracted_card_df.card_provider.isin(gibberish_values)]
+        cleaned_card_df = extracted_card_df[~extracted_card_df.card_provider.isin(gibberish_values)]
         date_format = '%m/%y'
-        df.expiry_date = pd.to_datetime(df.expiry_date, format = date_format, errors= 'coerce')
-        df.expiry_date
+        cleaned_card_df.expiry_date = pd.to_datetime(cleaned_card_df.expiry_date, format = date_format, errors= 'coerce')
+        cleaned_card_df.expiry_date
         #applying parse because there are inconsistent date strings in this column, due to which format fails.
-        df.date_payment_confirmed = df.date_payment_confirmed.apply(parse)
-        return df
+        cleaned_card_df.date_payment_confirmed = cleaned_card_df.date_payment_confirmed.apply(parse)
+        return cleaned_card_df
     
 
     def clean_store_data(self, stores_df):
@@ -161,5 +165,19 @@ class DataCleaning:
         # Convert 'removed' to datatype 'category'
         products_df_filtered['removed'] = products_df_filtered['removed'].astype('category')
         return products_df_filtered
+    
+    def clean_date_times(self, date_times):
+        date_times_filtered = date_times.copy()
+        date_times_filtered.timestamp = pd.to_datetime(date_times_filtered.timestamp, errors = 'coerce' , infer_datetime_format= True)
+        gibberish_vals = ['9P3C0WBWTU', 'W6FT760O2B', 'DOIR43VTCM', 'FA8KD82QH3', 'ZRH2YT3FR8', '03T414PVFI', 'FNPZFYI489', '67RMH5U2R6', 'J9VQLERJQO', '2VZEREEIKB', 'K9ZN06ZS1X', 'SAT4V9O2DL', 'EB8VJHYZLE', '22JSMNGJCU', '4FHLELF101', 'DGQAH7M1HQ', '3ZZ5UCZR5D', 'YULO5U0ZAM', 'LZLLPZ0ZUA', 'NF46JOZMTA', '9GN4VIO5A8', '1YMRDJNU2T', 'GYSATSCN88']
+        cleaned_date_times = date_times_filtered[~date_times_filtered.month.isin(gibberish_vals)]
+        cleaned_date_times.replace('NULL', float("NaN"), inplace= True)
+        cleaned_date_times.dropna(inplace= True)
+        cleaned_date_times.time_period = cleaned_date_times.time_period.astype('category')
+        return cleaned_date_times
+
+
+
+
 
 

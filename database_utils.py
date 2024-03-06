@@ -19,7 +19,7 @@ class DatabaseConnector:
         db_url2 = f"postgresql://{credentials['USER']}:{credentials['PASSWORD']}@{credentials['HOST']}:{credentials['PORT']}/{credentials['DATABASE']}"
         engine1 = sqlalchemy.create_engine(db_url1)
         engine2 = sqlalchemy.create_engine(db_url2)
-        return engine1, engine2
+        return engine1, engine2 # engine 1 for connecting AWS, & engine2 for connecting sales database
         
 
     def list_db_tables(self, engine1):
