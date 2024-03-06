@@ -1,32 +1,15 @@
-# Step 6:
-# Create a method called clean_user_data in the DataCleaning class which will perform the cleaning of the user data.
-# You will need clean the user data, look out for NULL values, errors with dates, incorrectly typed values and rows filled with the wrong information.
-# Step 7:
-# Now create a method in your DatabaseConnector class called upload_to_db. This method will take in a Pandas DataFrame and table name to upload to as an argument.
-# Step 8:
-# Once extracted and cleaned use the upload_to_db method to store the data in your sales_data database in a table named dim_users.
-
-from database_utils import DatabaseConnector
-from data_extraction import DataExtractor
 from dateutil.parser import parse
 import pandas as pd
 import re
 import numpy as np
-from decouple import config
+
+
 
 class DataCleaning:
-    def __init__(self):
-        pass
 
-    
-    def clean_user_data(self, legacy_user):
-
-        pd.set_option('display.max_columns', None)
-        #created copy of the dataframe
-        user_df = legacy_user.copy()
-        #checking for null values in the dataframe
+    def clean_legacy_user_data(self, legacy_users):
+        user_df = legacy_users.copy()
         user_df.dropna(inplace = True)
-        #removing any duplicate values from the dataframe
         user_df.drop_duplicates( inplace = True)
         user_df.first_name = user_df.first_name.astype('string')
         user_df.last_name = user_df.last_name.astype('string')
@@ -38,46 +21,39 @@ class DataCleaning:
         user_df.country = user_df.country[user_df['country'].isin(countries_to_keep)]
         return user_df
     
-    def clean_store_data(self, store_data):
 
-        pd.set_option('display.max_columns', None)
-        store_df = store_data.copy()
-        store_df.drop(columns = ['lat'], inplace = True)
-        col_with_null_percent = store_df.isna().mean()*100
+    def clean_legacy_store_data(self, store_df):
+        store_data = store_df.copy()
+        store_data.drop(columns = ['lat'], inplace = True)
+        col_with_null_percent = store_data.isna().mean()*100
         print(col_with_null_percent)
         #row 447 in the entire store_df contains incorrect value
-        store_df.drop([447], inplace = True)
+        store_data.drop([447], inplace = True)
         #converting the staff_numbers column to numeric
-        store_df.staff_numbers = pd.to_numeric(store_df.staff_numbers, errors= 'ignore')
+        store_data.staff_numbers = pd.to_numeric(store_data.staff_numbers, errors= 'ignore')
         #keeping only 2 continents
         continents_to_keep = ['Europe', 'America', 'eeEurope', 'eeAmerica']
-        store_df.continent = store_df.continent[store_df.continent.isin(continents_to_keep)]
+        store_data.continent = store_data.continent[store_data.continent.isin(continents_to_keep)]
         #using .replace to map correctly
-        store_df['continent'] = store_df['continent'].replace({'eeEurope': 'Europe', 'eeAmerica': 'America'})
+        store_data['continent'] = store_df['continent'].replace({'eeEurope': 'Europe', 'eeAmerica': 'America'})
         store_type_to_keep = ['Local', 'Super Store', 'Mall Kiosk', 'Outlet', 'Web Portal']
-        store_df.store_type = store_df.store_type[store_df.store_type.isin(store_type_to_keep)]
-        store_df.opening_date = pd.to_datetime(store_df.opening_date, infer_datetime_format= True, errors= 'coerce')
-        store_df.reset_index()
+        store_data.store_type = store_df.store_type[store_df.store_type.isin(store_type_to_keep)]
+        store_data.opening_date = pd.to_datetime(store_df.opening_date, infer_datetime_format= True, errors= 'coerce')
+        store_data.reset_index()
         print(store_df.head(5))
-        return store_df
+        return store_data
 
-    def clean_orders_data(self, orders_data):
 
-        pd.set_option('display.max_columns', None)
-        order_df = orders_data.copy()
-        #dropping these 2 columns because they are irrelevant
-        order_df.drop(columns = ['level_0', '1'], inplace = True)
-        #checking productquantity for incorrect values
-        null_cols_percent = print(order_df.isna().mean()*100)
+    def clean_orders_data(self, orders_table):
+        order_data = orders_table.copy()
+        #dropping these 4 columns because they are containing a large number of incorrect values
+        order_data.drop(columns = ['level_0', 'first_name', 'last_name', '1'], inplace = True)
+        null_cols_percent = order_data.isna().mean()*100
         print(null_cols_percent)
-        order_df.card_number.drop_duplicates(inplace = True)
-        order_df.dropna(subset = ['first_name', 'last_name'], inplace = True)
-        return order_df
+        return order_data
     
-    
-    #DataCleaning class to clean the data to remove any erroneous values, NULL values or errors with formatting.
+
     def clean_card_data(self, card_data):
-        # pd.set_option('display.max_rows', None)
         extracted_card_df = card_data.copy()
         print(extracted_card_df.date_payment_confirmed.head())
         print(f"Value count is: \n{extracted_card_df.date_payment_confirmed.value_counts()}")
@@ -110,10 +86,8 @@ class DataCleaning:
         return df
     
 
-    
-    def clean_store_data(self, store_df):
-        store_data = store_df.copy()
-        store_df.head(12)
+    def clean_store_data(self, stores_df):
+        store_data = stores_df.copy()
         store_data.isna().mean()*100
         store_data.continent.value_counts()
         store_data.replace('NULL', float("NaN"), inplace= True)
@@ -131,7 +105,7 @@ class DataCleaning:
         cleaned_store_data.country_code = cleaned_store_data.country_code.astype('category')
         return cleaned_store_data #3 rows contain entire NULL values, 217,405 & 437.
     
-    def convert_product_weights(self, extracted_products_df):
+    def convert_product_weights(self, products_df_filtered):
         def convert_weight(value):
             try:
                 if 'x' in value:   
@@ -165,73 +139,27 @@ class DataCleaning:
                         # If units are not recognised, return NaN
                         return np.nan
                     return round(result, 3)
+                
             except Exception as e:
-                # If any error occurs, return NaN
                 return np.nan
-        extracted_products_df['weight'] = extracted_products_df['weight'].apply(convert_weight)
-        cleaned_products_data = extracted_products_df.rename(columns={'weight': 'weight_in_kg'})
-        return cleaned_products_data
-
-
-if __name__ =="__main__":
-
-    # legacy_users_table = extractor.read_rds_table(table_name= 'legacy_users', conn = engine1)
-    # cleaned_legacy_user = cleaner.clean_user_data(legacy_users_table)
-    # print(cleaned_legacy_user)
-
-    # legacy_store_table = extractor.read_rds_table(table_name= 'legacy_store_details', conn = engine1)
-    # cleaned_legacy_store = cleaner.clean_store_data(legacy_store_table)
-    # print(cleaned_legacy_store)
-
-    # orders_table = extractor.read_rds_table(table_name= 'orders_table', conn = engine1)
-    # cleaned_orders_table = cleaner.clean_orders_data(orders_table)
-    # print(cleaned_orders_table)
-
-    ## uploading legacy_users table to sales_data database in a table called dim_users
-    # users = connector.upload_to_db(cleaned_legacy_user, 'dim_users')
-    # print(type(users))
+            
+        products_df_filtered['weight'] = products_df_filtered['weight'].apply(convert_weight)
+        converted_prod_weight_df = products_df_filtered.rename(columns={'weight': 'weight_in_kg'})
+        return converted_prod_weight_df
     
-    ## extracting card_details from pdf
-    # extracted_card_df = extractor.retrieve_pdf_data(pdf_path)
-    # extracted_card_df
-    # cleaned_card_data = cleaner.clean_card_data(card_data= extracted_card_df)
-    # print(cleaned_card_data.info())
-
-    ##uploading cleaned_card_data to sales_database in a table called dim_card_details
-    # card = connector.upload_to_db(cleaned_card_data, 'dim_card_details')
-    # print("successfully uploaded card details to the sales_data database")
-    # print(type(card))
-
-    ##extracting store details from the endpoint url:
-    # number_of_stores = extractor.list_number_of_stores(return_the_number_of_stores)
-    # store_df = extractor.retrieve_stores_data(number_of_stores, retrieve_a_store)
-    # cleaned_store_data = cleaner.clean_store_data(store_df)
-    # print(cleaned_store_data.info())
-
-    ## uploading cleaned_store_data to sales_databse in a table called dim_store_details
-    # store = connector.upload_to_db(cleaned_store_data, 'dim_store_details')
-    # print("Successfully uploaded cleaned store data to the sales_database")
-
-
-    connector = DatabaseConnector()
-    cred_path ='db_creds.yaml'
-    credentials = connector.read_db_creds(file_path = cred_path)
-    engine1, engine2 = connector.init_db_engine(credentials)
-    extractor = DataExtractor()
-    s3_address = config('S3_ADDRESS')
-    csv_filepath = config('CSV_FILEPATH')
-    #make sure to configure aws credentials before running this method
-    extracted_product_df, csv_file = extractor.extract_from_s3(s3_address, csv_filepath)
-    cleaner = DataCleaning()
-    converted_weights = cleaner.convert_product_weights(extracted_product_df)
-    print(converted_weights.weight_in_kg)
-
-    
-
-
-
-
-
-
+    def clean_products_data(self, product_df):
+        products_df = product_df.copy()
+        products_df_filtered = products_df[products_df['product_price'].notnull()]
+        # regular expression to filter out rows where 'category' contains numbers
+        products_df_filtered = products_df_filtered[~products_df_filtered['category'].str.contains('\d')]
+        products_df_filtered['category'] = products_df_filtered['category'].astype('category')
+        # Convert the 'date_added' column to datetime format
+        products_df_filtered['date_added'] = products_df_filtered['date_added'].apply(parse)
+        products_df_filtered['date_added'] = products_df_filtered['date_added'].combine_first(pd.to_datetime(products_df_filtered['date_added'], errors='coerce', format='%Y %B %d'))
+        # Correct the spelling in the column 'removed'
+        products_df_filtered['removed'] = products_df_filtered['removed'].replace('Still_avaliable', 'Still_available')
+        # Convert 'removed' to datatype 'category'
+        products_df_filtered['removed'] = products_df_filtered['removed'].astype('category')
+        return products_df_filtered
 
 

@@ -2,6 +2,7 @@ import sqlalchemy
 import yaml
 
 
+
 class DatabaseConnector:
 
     def read_db_creds(self, file_path):
@@ -9,6 +10,7 @@ class DatabaseConnector:
             with open(file_path, 'r') as file:
                 db_creds = yaml.safe_load(file)
             return db_creds
+        
         except FileNotFoundError:
             raise FileNotFoundError(f"File '{file_path}' not found. Make sure it exists.")
 
