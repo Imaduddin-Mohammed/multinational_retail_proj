@@ -26,24 +26,26 @@ class DataExtractor:
         return concatenated_card_data
     
     def list_number_of_stores(self, number_of_stores_ep, headers):
-        try:
-            response = requests.get(number_of_stores_ep, headers = headers)    
-            if response.status_code == 200:
-                stores = response.json()
-                return stores['number_stores']
+        # try:
+        response = requests.get(number_of_stores_ep, headers = headers)    
+        # if response.status_code == 200:
+        stores = response.json()
+        print("test")
+        return stores
+        
+        # else:
+            # print("Failed to fetch number of stores. Status code:", response.status_code)
+            # print(response.text)
+            # return None
             
-            else:
-                print("Failed to fetch number of stores. Status code:", response.status_code)
-                return None
+        # except requests.RequestException as e:
+            # print(f"An error occured: {e}")
+            # return None
             
-        except requests.RequestException as e:
-            print(f"An error occured: {e}")
-            return None
-            
-    def retrieve_stores_data(self, number_of_stores_ep, retrieve_a_store_ep, headers):
+    def retrieve_stores_data(self, number_of_stores, retrieve_a_store_ep, headers):
         try:
             store_list = []
-            for store_number in range(0, number_of_stores_ep):
+            for store_number in range(0, number_of_stores):
                 #we can also use .format method to replace the store number
                 endpoint_url = retrieve_a_store_ep.replace("{store_number}", str(store_number))
                 response = requests.get(endpoint_url, headers = headers)

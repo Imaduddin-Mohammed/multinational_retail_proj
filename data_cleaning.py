@@ -9,30 +9,29 @@ class DataCleaning:
 
     def clean_legacy_user_data(self, legacy_users):
 
-        user_df = legacy_users.copy()
-        user_df.dropna(inplace = True)
-        user_df.drop_duplicates( inplace = True)
-        user_df.first_name = user_df.first_name.astype('string')
-        user_df.last_name = user_df.last_name.astype('string')
-        user_df.join_date = pd.to_datetime(user_df['join_date'],infer_datetime_format= True, errors= 'coerce')
-        user_df.date_of_birth = pd.to_datetime(user_df['date_of_birth'], infer_datetime_format= True, errors= 'coerce')
-        user_df.country = user_df.country.astype('string')
-        #removed nulls from countries and kept the mask of only these 3
+        cleaned_legacy_users_df = legacy_users.copy()
+        cleaned_legacy_users_df.isna().mean()*100
+        cleaned_legacy_users_df.replace('NULL', float("NaN"), inplace= True)
+        cleaned_legacy_users_df.dropna(axis=0, inplace= True)
+        cleaned_legacy_users_df.first_name = cleaned_legacy_users_df.first_name.astype('string')
+        cleaned_legacy_users_df.last_name = cleaned_legacy_users_df.last_name.astype('string')
+        cleaned_legacy_users_df.join_date = pd.to_datetime(cleaned_legacy_users_df['join_date'],infer_datetime_format= True, errors= 'coerce')
+        cleaned_legacy_users_df.date_of_birth = pd.to_datetime(cleaned_legacy_users_df['date_of_birth'], infer_datetime_format= True, errors= 'coerce')
+        cleaned_legacy_users_df.country = cleaned_legacy_users_df.country.astype('string')
         countries_to_keep = ['United Kingdom', 'Germany', 'United States']
-        user_df.country = user_df.country[user_df['country'].isin(countries_to_keep)]
-        return user_df
+        cleaned_legacy_users_df.country = cleaned_legacy_users_df.country[cleaned_legacy_users_df['country'].isin(countries_to_keep)]
+        cleaned_legacy_users_df.isna().mean()*100 #Still there are some null values in the join_date - 24% and date_of_birth column - 27%
+        cleaned_legacy_users_df.dropna(subset=['date_of_birth', 'join_date'], inplace= True)
+        return cleaned_legacy_users_df
     
 
     def clean_legacy_store_data(self, store_df):
 
         cleaned_store_df = store_df.copy()
         cleaned_store_df.drop(columns = ['lat'], inplace = True)
-        col_with_null_percent = cleaned_store_df.isna().mean()*100
-        print(col_with_null_percent)
         #row 447 in the entire store_df contains incorrect value
         cleaned_store_df.drop([447], inplace = True)
         #converting the staff_numbers column to numeric
-        cleaned_store_df.staff_numbers = pd.to_numeric(cleaned_store_df.staff_numbers, errors= 'ignore')
         #keeping only 2 continents
         continents_to_keep = ['Europe', 'America', 'eeEurope', 'eeAmerica']
         cleaned_store_df.continent = cleaned_store_df.continent[cleaned_store_df.continent.isin(continents_to_keep)]
@@ -41,16 +40,14 @@ class DataCleaning:
         store_type_to_keep = ['Local', 'Super Store', 'Mall Kiosk', 'Outlet', 'Web Portal']
         cleaned_store_df.store_type = store_df.store_type[store_df.store_type.isin(store_type_to_keep)]
         cleaned_store_df.opening_date = pd.to_datetime(store_df.opening_date, infer_datetime_format= True, errors= 'coerce')
-        cleaned_store_df.reset_index()
-        print(store_df.head(5))
         return cleaned_store_df
 
 
     def clean_orders_data(self, orders_table):
 
         cleaned_order_df = orders_table.copy()
-        #dropping these 4 columns because they are containing a large number of incorrect values
-        cleaned_order_df.drop(columns = ['level_0', 'first_name', 'last_name', '1'], inplace = True)
+        #dropping these 3 columns because they are containing a large number of incorrect values
+        cleaned_order_df.drop(columns = ['first_name', 'last_name', '1'], inplace = True)
         null_cols_percent = cleaned_order_df.isna().mean()*100
         print(null_cols_percent)
         return cleaned_order_df
