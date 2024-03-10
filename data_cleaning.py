@@ -88,23 +88,30 @@ class DataCleaning:
     
 
     def clean_store_data(self, stores_df):
-        store_data = stores_df.copy()
-        store_data.isna().mean()*100
-        store_data.continent.value_counts()
-        store_data.replace('NULL', float("NaN"), inplace= True)
-        store_data.isna().mean()*100
-        store_data.value_counts()
-        #removing gibberish values from the dataframe
+        cleaned_stores_df = stores_df.copy()
+        cleaned_stores_df.head(12)
+        cleaned_stores_df.isna().mean()*100
+        cleaned_stores_df.continent.value_counts()
+        cleaned_stores_df.replace('NULL', float("NaN"), inplace= True)
+        cleaned_stores_df.dropna(axis = 0, how = 'all', inplace=True)
+        cleaned_stores_df.continent.value_counts()
+        cleaned_stores_df.value_counts()
         gibberish_values = ['QMAVR5H3LD', 'LU3E036ZD9', '5586JCLARW', 'GFJQ2AAEQ8', 'SLQBD982C0', 'XQ953VS0FG', '1WZB1TE1HL']
-        cleaned_store_data = store_data[~store_data.continent.isin(gibberish_values)]
-        cleaned_store_data.drop('lat', axis = 1 , inplace= True)
-        cleaned_store_data.continent.replace('eeEurope', 'Europe', inplace= True)
-        cleaned_store_data.continent.replace('eeAmerica', 'America', inplace= True)
-        cleaned_store_data.dropna(how = 'all', axis= 0, inplace= True)
-        cleaned_store_data.opening_date = cleaned_store_data.opening_date.astype('datetime64[ns]')
-        cleaned_store_data.continent = cleaned_store_data.continent.astype('category')
-        cleaned_store_data.country_code = cleaned_store_data.country_code.astype('category')
-        return cleaned_store_data #3 rows contain entire NULL values, 217,405 & 437.
+        filtered_store_df = cleaned_stores_df[~cleaned_stores_df.continent.isin(gibberish_values)]
+        filtered_store_df.continent.value_counts()
+        filtered_store_df.continent.replace('eeEurope', 'Europe', inplace= True)
+        filtered_store_df.continent.replace('eeAmerica', 'America', inplace= True)
+        filtered_store_df.store_type = filtered_store_df.store_type.astype('category')
+        filtered_store_df.opening_date = pd.to_datetime(filtered_store_df.opening_date, infer_datetime_format=True, errors = 'coerce')
+        filtered_store_df.staff_numbers.unique()
+        # Remove non-digit characters
+        filtered_store_df.staff_numbers = filtered_store_df.staff_numbers.str.replace(r'\D', '', regex=True)
+        # # Convert column to numeric, coerce errors
+        filtered_store_df.staff_numbers = pd.to_numeric(filtered_store_df.staff_numbers, errors='coerce')
+        filtered_store_df.staff_numbers.nunique()
+        filtered_store_df.at[431,'staff_numbers']= float('NaN')
+        return filtered_store_df
+        
     
     def convert_product_weights(self, products_df_filtered):
         def convert_weight(value):

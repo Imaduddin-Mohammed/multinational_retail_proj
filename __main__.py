@@ -4,6 +4,7 @@ from database_utils import DatabaseConnector
 from decouple import config
 
 
+
 if __name__ == "__main__":
 
     # INITIALIZING THE THREE PROJECT CLASSES:
@@ -55,22 +56,24 @@ if __name__ == "__main__":
     # EXTRACTING STORES DATA USING AN API:
 
     # DEFINING SENSITIVE INFO (we have 2-api endpoints)
-    number_of_stores_ep = config('NO_OF_STORES_EP')
+    # number_of_stores_ep = config('NO_OF_STORES_EP')
+    # retrieve_a_store_ep= config('RETRIEVE_A_STORE_EP')
+    number_of_stores_ep= config('NO_OF_STORES_EP')
     retrieve_a_store_ep= config('RETRIEVE_A_STORE_EP')
-    headers = config('HEADER_DETAILS')
+    headers = credentials['HEADER_DETAILS']  #using .yaml file for retrieving the dictionary of header, because .env file supports string type credentials
 
     number_of_stores = extractor.list_number_of_stores(number_of_stores_ep, headers)
     print(f"There are {number_of_stores} stores.")
-    # stores_df = extractor.retrieve_stores_data(number_of_stores, retrieve_a_store_ep, headers)
-    # print(stores_df.info())
+    stores_df = extractor.retrieve_stores_data(number_of_stores, retrieve_a_store_ep, headers)
+    print(stores_df.head())
 
-    # # CLEANING STORES DATA:
-    # cleaned_stores_df = cleaner.clean_store_data(stores_df)
-    # print(cleaned_stores_df.info())
+    # CLEANING STORES DATA:
+    cleaned_stores_df = cleaner.clean_store_data(stores_df)
+    print(cleaned_stores_df.info())
 
-    # # UPLOADING STORES DATA TO SALES DATABASE:
-    # connector.upload_to_db(cleaned_stores_df, 'dim_store_details', engine2)
-    # print("Successfully uploaded stores data as 'dim_store_details' to sales database")
+    # UPLOADING STORES DATA TO SALES DATABASE:
+    connector.upload_to_db(cleaned_stores_df, 'dim_store_details', engine2)
+    print("Successfully uploaded stores data as 'dim_store_details' to sales database")
 
     # # EXTRACTING PRODUCTS DATA FROM AWS S3 BUCKET:     ****very important!- make sure to configure aws credentials before running this method -very important!****
     # # defining the credentials that will be required for this task
