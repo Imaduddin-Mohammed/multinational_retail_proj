@@ -9,21 +9,29 @@ class DataCleaning:
 
     def clean_legacy_user_data(self, legacy_users):
 
-        cleaned_legacy_users_df = legacy_users.copy()
-        cleaned_legacy_users_df.isna().mean()*100
-        cleaned_legacy_users_df.replace('NULL', float("NaN"), inplace= True)
-        cleaned_legacy_users_df.dropna(axis=0, inplace= True)
-        cleaned_legacy_users_df.first_name = cleaned_legacy_users_df.first_name.astype('string')
-        cleaned_legacy_users_df.last_name = cleaned_legacy_users_df.last_name.astype('string')
-        cleaned_legacy_users_df.join_date = pd.to_datetime(cleaned_legacy_users_df['join_date'],infer_datetime_format= True, errors= 'coerce')
-        cleaned_legacy_users_df.date_of_birth = pd.to_datetime(cleaned_legacy_users_df['date_of_birth'], infer_datetime_format= True, errors= 'coerce')
-        cleaned_legacy_users_df.country = cleaned_legacy_users_df.country.astype('string')
+        legacy_users_df = legacy_users.copy()
+        legacy_users_df.info()
+        legacy_users_df.isna().mean()*100
+        nulls = ['NULL']
+        mask = legacy_users_df[legacy_users_df.user_uuid.isin(nulls)]
+        # In mask there are 21 rows of complete nulls across the entire datframe
+        legacy_users_df.replace('NULL', float("NaN"), inplace= True)
+        legacy_users_df.dropna(axis=0, how= 'all', inplace= True)
+        legacy_users_df.first_name = legacy_users_df.first_name.astype('string')
+        legacy_users_df.last_name = legacy_users_df.last_name.astype('string')
+        legacy_users_df.country = legacy_users_df.country.astype('string')
+        legacy_users_df.country_code = legacy_users_df.country_code.astype('string')
         countries_to_keep = ['United Kingdom', 'Germany', 'United States']
-        cleaned_legacy_users_df.country = cleaned_legacy_users_df.country[cleaned_legacy_users_df['country'].isin(countries_to_keep)]
-        cleaned_legacy_users_df.isna().mean()*100 #Still there are some null values in the join_date - 24% and date_of_birth column - 27%
-        cleaned_legacy_users_df.dropna(subset=['date_of_birth', 'join_date'], inplace= True)
-        return cleaned_legacy_users_df
-    
+        legacy_users_df.country = legacy_users_df.country[legacy_users_df['country'].isin(countries_to_keep)]
+        legacy_users_df.country_code.value_counts()
+        gibberish_values = ['5D74J6FPFJ','XPVCZE2L8B','QREF9WLI2A' ,'XKI9UXSCZ1','RVRFD92E48'  ,'IM8MN1L9MJ','LZGTB0T5Z7','FB13AKRI21','OS2P9CMHR6','NTCGYW8LVC' ,'PG8MOC0UZI' ,'0CU6LW3NKB', 'QVUW9JSKY3' , 'VSM4IZ4EL3' , '44YAIDY048']
+        cleaned_legacy_users = legacy_users_df[~legacy_users_df.country_code.isin(gibberish_values)]
+        cleaned_legacy_users.country_code.value_counts()
+        cleaned_legacy_users.country_code.replace('GGB', 'GB', inplace = True)
+        cleaned_legacy_users.country_code.value_counts()
+        cleaned_legacy_users.date_of_birth = cleaned_legacy_users.date_of_birth.astype('datetime64[ns]')
+        cleaned_legacy_users.join_date = cleaned_legacy_users.join_date.astype('datetime64[ns]')
+        return cleaned_legacy_users
 
     def clean_legacy_store_data(self, store_df):
 
@@ -55,37 +63,24 @@ class DataCleaning:
 
     def clean_card_data(self, card_data):
         
-        extracted_card_df = card_data.copy()
-        print(extracted_card_df.date_payment_confirmed.head())
-        print(f"Value count is: \n{extracted_card_df.date_payment_confirmed.value_counts()}")
-        #we mask out these NULLS for the entire dataframe
-        Nulls = ['NULL']
-        mask = extracted_card_df.date_payment_confirmed.isin(Nulls)
-        subset_df = extracted_card_df[mask]
-        subset_df
-        #from above we can see that there are 11NULL values present in this column which looking upon closely are entirely NULL for each column in the entire dataframe
-        extracted_card_df.dropna(subset=['date_payment_confirmed'], inplace=True)
-        #This doesnt drop nulls because they are not recognised by pandas because they are string
-        print(extracted_card_df.date_payment_confirmed.iloc[377])
-        #we check if NULLS are dropped. But they arent
-        #we have to manually handle these NULL values in the dataframe because they might be string or in a format pandas cannot recognise.
-        extracted_card_df.replace('NULL', float("NaN"), inplace= True)
-        extracted_card_df.replace('', float("NaN"), inplace= True)
-        extracted_card_df.replace(' ', float("NaN"), inplace= True)
-        print(extracted_card_df.date_payment_confirmed.iloc[377])
-        #dropping rows with all NaN values
-        extracted_card_df.dropna(axis = 0, how='all', inplace= True)
-        extracted_card_df.card_provider.value_counts()
-        #Removing the gibberish values from the dataframe and saving it in a filtered dataframe namely df.
+        card_df = card_data.copy()
+        card_df.info()
+        nulls = ['NULL']
+        subset_df = card_df[card_df.card_provider.isin(nulls)]
+        card_df.replace('NULL', float("NaN"), inplace= True)
+        card_df.dropna(axis = 0, how='all', inplace= True)
+        card_df.card_provider.value_counts()
         gibberish_values = ['OGJTXI6X1H', 'BU9U947ZGV', 'UA07L7EILH', 'XGZBYBYGUW', 'DLWF2HANZF', '1M38DYQTZV', 'JRPRLPIBZ2',  'DE488ORDXY', '5CJH7ABGDR', 'JCQMU8FN85', 'TS8A81WFXV', 'WJVMUO4QX6', 'NB71VBAHJE', '5MFWFBZRM9']
-        cleaned_card_df = extracted_card_df[~extracted_card_df.card_provider.isin(gibberish_values)]
+        cleaned_card_df = card_df[~card_df.card_provider.isin(gibberish_values)]
+        cleaned_card_df['card_number'] = cleaned_card_df['card_number'].astype('str').apply(lambda x: x.replace("?", ''))
+        cleaned_card_df['card_number'] = cleaned_card_df['card_number'].astype('string')
+        cleaned_card_df.card_provider  = cleaned_card_df.card_provider.astype('category')
         date_format = '%m/%y'
-        cleaned_card_df.expiry_date = pd.to_datetime(cleaned_card_df.expiry_date, format = date_format, errors= 'coerce')
-        cleaned_card_df.expiry_date
-        #applying parse because there are inconsistent date strings in this column, due to which format fails.
-        cleaned_card_df.date_payment_confirmed = cleaned_card_df.date_payment_confirmed.apply(parse)
+        cleaned_card_df.expiry_date = pd.to_datetime(cleaned_card_df.expiry_date, format = date_format)
+        cleaned_card_df['expiry_date'] = cleaned_card_df['expiry_date'].dt.strftime('%m/%y')
+        cleaned_card_df.date_payment_confirmed = cleaned_card_df.date_payment_confirmed.astype('datetime64[ns]')
+        cleaned_card_df.card_number.nunique()
         return cleaned_card_df
-    
 
     def clean_store_data(self, stores_df):
         cleaned_stores_df = stores_df.copy()
@@ -112,7 +107,6 @@ class DataCleaning:
         filtered_store_df.at[431,'staff_numbers']= float('NaN')
         return filtered_store_df
         
-    
     def convert_product_weights(self, products_df_filtered):
         def convert_weight(value):
             try:

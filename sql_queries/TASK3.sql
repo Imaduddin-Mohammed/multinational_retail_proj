@@ -1,7 +1,12 @@
 -- Task 3:  Casting columns to the correct data_types
--- SELECT *
---     FROM dim_store_details
---     WHERE longitude = 'N/A';
+SELECT *
+    FROM dim_store_details
+    WHERE longitude = 'N/A';
+
+SELECT *, CONCAT('lat,latitude') AS latitude 
+	FROM dim_store_details
+ALTER TABLE dim_store_details
+	DROP COLUMN lat
 
 UPDATE dim_store_details
     SET address = NULL
@@ -14,6 +19,7 @@ UPDATE dim_store_details
 UPDATE dim_store_details
     SET locality = NULL
     WHERE locality = 'N/A';
+
 
 ALTER TABLE dim_store_details
     ALTER COLUMN longitude TYPE FLOAT USING (longitude::FLOAT),

@@ -1,5 +1,5 @@
 -- Task 2: Casting columns to the correct data_types
-ALTER TABLE dim_user
+ALTER TABLE dim_users
     ALTER COLUMN first_name TYPE VARCHAR(255) USING (first_name::VARCHAR(255)),
     ALTER COLUMN last_name TYPE VARCHAR(255) USING (last_name::VARCHAR(255)),
     ALTER COLUMN date_of_birth TYPE DATE USING (date_of_birth::DATE),

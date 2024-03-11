@@ -7,17 +7,17 @@ from decouple import config
 
 if __name__ == "__main__":
 
-    # INITIALIZING THE THREE PROJECT CLASSES:
+    ## INITIALIZING THE THREE PROJECT CLASSES:
     connector = DatabaseConnector()
     extractor = DataExtractor()
     cleaner = DataCleaning()
 
-    # READING SENSITIVE INFORMATION AND INITIALIZING THE CONNECTOR METHOD:
+    # #READING SENSITIVE INFORMATION AND INITIALIZING THE CONNECTOR METHOD:
     cred_path ='db_creds.yaml'
     credentials = connector.read_db_creds(file_path = cred_path)
     engine1, engine2 = connector.init_db_engine(credentials)
 
-    # TABLES IN THE AWS RDATABASE:
+    ## TABLES IN THE AWS RDATABASE:
     # tables = connector.list_db_tables(engine1)
     # print("Tables in the database:")
     # for table in tables:
@@ -36,44 +36,44 @@ if __name__ == "__main__":
     # cleaned_orders_df = cleaner.clean_orders_data(orders_df)
     # print(cleaned_orders_df.info())
 
-    # # UPLOADING CLEANED LEGACY USERS TABLE TO SALES DATABSE:
-    # connector.upload_to_db(cleaned_legacy_users, 'dim_user', engine2)
+    ## UPLOADING CLEANED LEGACY USERS TABLE TO SALES DATABSE:
+    # connector.upload_to_db(cleaned_legacy_users, 'dim_users', engine2)
     # print("Successfully uploaded legacy users table as 'dim_users' to sales database.")
 
     # # EXTRACTING CARD DETAILS FROM PDF:
-    # pdf_path = config('PDF_PATH')
-    # extracted_card_df = extractor.retrieve_pdf_data(pdf_path)
-    # extracted_card_df
+    pdf_path = config('PDF_PATH')
+    extracted_card_df = extractor.retrieve_pdf_data(pdf_path)
+    extracted_card_df
 
     # # CLEANING THE CARD DETAILS:
-    # cleaned_card_data = cleaner.clean_card_data(card_data= extracted_card_df)
-    # print(cleaned_card_data.info())
+    cleaned_card_data = cleaner.clean_card_data(card_data= extracted_card_df)
+    print(cleaned_card_data.info())
 
     # # UPLOADING THE CARD DETAILS TO SALES DATBASE:
-    # connector.upload_to_db(cleaned_card_data, 'dim_card_details', engine2)
-    # print("Successfully uploaded card details as 'dim_card_details' to sales database")
+    connector.upload_to_db(cleaned_card_data, 'dim_card_details', engine2)
+    print("Successfully uploaded card details as 'dim_card_details' to sales database")
 
-    # EXTRACTING STORES DATA USING AN API:
+    ## EXTRACTING STORES DATA USING AN API:
 
     # DEFINING SENSITIVE INFO (we have 2-api endpoints)
     # number_of_stores_ep = config('NO_OF_STORES_EP')
     # retrieve_a_store_ep= config('RETRIEVE_A_STORE_EP')
-    number_of_stores_ep= config('NO_OF_STORES_EP')
-    retrieve_a_store_ep= config('RETRIEVE_A_STORE_EP')
-    headers = credentials['HEADER_DETAILS']  #using .yaml file for retrieving the dictionary of header, because .env file supports string type credentials
+    # number_of_stores_ep= config('NO_OF_STORES_EP')
+    # retrieve_a_store_ep= config('RETRIEVE_A_STORE_EP')
+    # headers = credentials['HEADER_DETAILS']  #using .yaml file for retrieving the dictionary of header, because .env file supports string type credentials
 
-    number_of_stores = extractor.list_number_of_stores(number_of_stores_ep, headers)
-    print(f"There are {number_of_stores} stores.")
-    stores_df = extractor.retrieve_stores_data(number_of_stores, retrieve_a_store_ep, headers)
-    print(stores_df.head())
+    # number_of_stores = extractor.list_number_of_stores(number_of_stores_ep, headers)
+    # print(f"There are {number_of_stores} stores.")
+    # stores_df = extractor.retrieve_stores_data(number_of_stores, retrieve_a_store_ep, headers)
+    # print(stores_df.head())
 
-    # CLEANING STORES DATA:
-    cleaned_stores_df = cleaner.clean_store_data(stores_df)
-    print(cleaned_stores_df.info())
+    # # CLEANING STORES DATA:
+    # cleaned_stores_df = cleaner.clean_store_data(stores_df)
+    # print(cleaned_stores_df.info())
 
-    # UPLOADING STORES DATA TO SALES DATABASE:
-    connector.upload_to_db(cleaned_stores_df, 'dim_store_details', engine2)
-    print("Successfully uploaded stores data as 'dim_store_details' to sales database")
+    # # UPLOADING STORES DATA TO SALES DATABASE:
+    # connector.upload_to_db(cleaned_stores_df, 'dim_store_details', engine2)
+    # print("Successfully uploaded stores data as 'dim_store_details' to sales database")
 
     # # EXTRACTING PRODUCTS DATA FROM AWS S3 BUCKET:     ****very important!- make sure to configure aws credentials before running this method -very important!****
     # # defining the credentials that will be required for this task
